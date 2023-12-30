@@ -4,9 +4,11 @@ use dialoguer::{theme::ColorfulTheme, FuzzySelect, Input};
 use glob::{glob, Paths};
 
 pub mod converters;
-use crate::converters::get_converters;
+pub mod file_types;
 
-fn select(options: &[&str]) -> usize {
+use crate::{converters::{get_converters, Converter}, file_types::get_file_type};
+
+fn select(options: &Vec<&String>) -> usize {
     let selection = FuzzySelect::with_theme(&ColorfulTheme::default())
         .with_prompt("Convert to: ")
 		.max_length(5_usize)
@@ -62,21 +64,45 @@ fn main() {
 
 	let mut files = get_target_files(target_glob);
 
-	let extension = get_extension(&mut files).expect("WTF");
-		// .get_or_insert(
-		// 	basic_prompt("Could not automatically find extension. Enter extension: ")
-		// ).to_string();
+	let extension = get_extension(&mut files)
+		.unwrap_or_else(|| basic_prompt("Could not automatically find extension. Enter extension: ")
+		).to_string();
 
-	println!("Extension used is {}.", extension);
+	let file_types = get_file_type(&extension);
+
+	println!("Extension used is {} ({}).", extension, file_types[0]);
+
+	let file_type = file_types[0];
 
 	for file in files {
 		match file {
-			Ok(path) => println!("{:?}", path.display()),
-			Err(e) => println!("{:?}", e)
+			Ok(path) => println!("R:{:?}", path.display()),
+			Err(e) => println!("E:{:?}", e)
 		}
 	}
 
-	let selections = &[""];
+	let mut selectedConverterTmp: Option<Converter> = None;
 
-    println!("Enjoy your {}!", selections[select(selections)]);
+	println!("L: {}", converters.len());
+
+	for converter in converters {
+		if (converter.convert_from[&file_type].is_string()) {
+			selectedConverterTmp = Some(converter);
+			break;
+		}
+	}
+
+	let selectedConverter = selectedConverterTmp.unwrap();
+
+	println!("Converter: {}", selectedConverter.name);
+
+	let selections: Vec<&String> = selectedConverter
+		.convert_to.as_object()
+		.unwrap()
+		.iter()
+		.map(|v| v.0)
+		.collect()	
+		;
+
+    println!("Enjoy your {}!", selections[select(&selections)]);
 }

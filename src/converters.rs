@@ -6,10 +6,10 @@ use serde_json::{Result, Value};
 
 #[derive(Serialize, Deserialize)]
 pub struct Converter {
-	name: String,
-	command: String,
-	convert_from: serde_json::Value,
-	convert_to: serde_json::Value,
+	pub name: String,
+	pub command: String,
+	pub convert_from: serde_json::Value,
+	pub convert_to: serde_json::Value,
 }
 
 pub fn get_converters() -> Vec<Converter>
