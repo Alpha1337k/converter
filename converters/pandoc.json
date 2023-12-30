@@ -1,7 +1,8 @@
 {
 	"name": "Pandoc",
 	"href": "https://github.com/jgm/pandoc/",
-	"command": "pandoc -f %INFORM% -t %OUTFORM% -o %OUTFILE% %INFILE%",
+	"program_name": "pandoc",
+	"args": "-f %INFORM% -t %OUTFORM% -o %OUTFILE% %INFILE%",
 	"convert_from": {
 		"bibtex": "bib",
 		"biblatex": "bib",
