@@ -1,8 +1,8 @@
-use std::{fs, process::Command};
+use std::{fs, process::{Command, ExitStatus}};
 
 use glob::glob;
 use serde::{Deserialize, Serialize};
-use serde_json::{Result, Value};
+
 
 #[derive(Serialize, Deserialize)]
 pub struct Converter {
@@ -41,17 +41,28 @@ pub fn run_converter(converter: &Converter, input: &str, output: &str, input_typ
 		.replace("%OUTFILE%", output)
 		.replace("%INFILE%", input);
 
-	println!("> {} {}", converter.program_name, parsed_command);
+	print!("[CONVERTING] {} -> {}\t", input, output);
 
 	let result = Command::new(&converter.program_name)
 		.args(parsed_command.split(" "))
 		.output()
-		.expect("failed to run program.");
+		.expect("Failed to run program.");
+
+	if (ExitStatus::success(&result.status) == false) {
+		println!("[ERROR]\n---");
+
+		println!("> {} {}", converter.program_name, parsed_command);
 	
-	if (result.stdout.len() != 0) {
-		println!("< {}", String::from_utf8(result.stdout).unwrap());
+		if result.stdout.len() != 0 {
+			println!("<\t{}", String::from_utf8(result.stdout).unwrap());
+		}
+		if result.stderr.len() != 0 {
+			println!("<2\t{}", String::from_utf8(result.stderr).unwrap());
+		}
+
+		println!("---");
+	} else {
+		println!("[OK]");
 	}
-	if (result.stderr.len() != 0) {
-		println!("< {}", String::from_utf8(result.stderr).unwrap());
-	}
+	
 }

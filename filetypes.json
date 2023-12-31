@@ -89,5 +89,16 @@
 		"mediawiki",
 		"dokuwiki",
 		"haddock"
-	]
+	],
+	"mp4": "mp4",
+	"avi": "avi",
+	"jpeg": "jpeg",
+	"png": "png",
+	"gif": "gif",
+	"mp1": "mp1",
+	"mp2": "mp2",
+	"mp3": "mp3",
+	"avif": "avif",
+	"svg": "svg",
+	"mkv": "mkv"
 }

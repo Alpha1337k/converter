@@ -1,16 +1,16 @@
-use std::{collections::HashSet, ffi::{OsStr, OsString}, arch::x86_64, path::PathBuf};
+use std::{collections::HashSet, ffi::{OsString}, path::{PathBuf}, fmt::Display};
 
-use dialoguer::{theme::ColorfulTheme, FuzzySelect, Input};
-use glob::{glob, Paths};
+use dialoguer::{theme::ColorfulTheme, FuzzySelect, Input, Confirm};
+use glob::{glob};
 
 pub mod converters;
 pub mod file_types;
 
-use crate::{converters::{get_converters, Converter, run_converter}, file_types::get_file_type};
+use crate::{converters::{get_converters, Converter, run_converter}, file_types::{get_file_type, get_file_types_flat}};
 
-fn select(options: &Vec<&String>) -> usize {
+fn select<T: Display>(prompt: &str, options: &Vec<T>) -> usize {
     let selection = FuzzySelect::with_theme(&ColorfulTheme::default())
-        .with_prompt("Convert to: ")
+        .with_prompt(prompt)
 		.max_length(5_usize)
         .default(0)
         .items(&options[..])
@@ -41,58 +41,75 @@ fn get_extension(files: &Vec<PathBuf>) -> Option<String> {
 	let mut extensions = HashSet::new();
 
 	for file in files {
-		let ext = file.extension().unwrap();
-		extensions.insert(OsString::from(ext).into_string().expect("Failed conversion"));
-		// match file {
-		// 	Ok(f) => {
+		match file.extension() {
+			Some(ext) => extensions.insert(OsString::from(ext).into_string().expect("Failed conversion")),
+			None => extensions.insert("".to_string())
+		};
 
-		// 	}
-		// 	Err(err) => {
-		// 		println!("Failed to get extension: {}", err);
-		// 	}
-		// }
 	}
 
-	if (extensions.len() == 1) {
+	if extensions.len() == 1 {
 		let rv = extensions.iter().next().unwrap().clone();
 		println!("RV: {}", rv);
 		return Some(rv);
 	}
-	return Some(String::new() + "AA");
+	return None;
+}
+
+fn get_filetype(files: &Vec<PathBuf>) -> String {
+	let mut file_type = String::new();
+
+	match get_extension(&files) {
+		Some(ext) => 'autoext: {
+			let file_types = get_file_type(&ext);
+			if (file_types.len() == 0) {
+				println!("Could not automatically find extension.");
+				break 'autoext
+			};
+
+			if (file_types.len() >= 2) {
+				println!("Multiple extensions found. Requires manual input.");
+				break 'autoext
+			};
+
+				let confirmed = Confirm::new()
+					.with_prompt(format!("Detected filetype '{}'. Is this correct?", file_types[0]))
+					.interact()
+					.unwrap();
+				if (confirmed == true) {
+					return file_types[0].to_string();
+				}
+		},
+		None => {
+			println!("Extension not specified.");
+		}
+	};
+
+	let types = get_file_types_flat();
+
+	let type_idx = select("Select filetype", &types);
+	
+	return types[type_idx].clone();
 }
 
 fn main() {
 	let converters = get_converters();
-
-
 	let target_glob = basic_prompt("[GLOB] Select target files: ");
+	let files = get_target_files(target_glob);
 
-	let mut files = get_target_files(target_glob);
+	println!("{}",format!("Found {} files.", files.len()));
+	let file_type = get_filetype(&files);
 
-	let extension = get_extension(&files)
-		.unwrap_or_else(|| basic_prompt("Could not automatically find extension. Enter extension: ")
-		).to_string();
-
-	let file_types = get_file_type(&extension);
-
-	println!("Extension used is {} ({}).", extension, file_types[0]);
-
-	let file_type = file_types[0];
-
-	for file in &files {
-		println!("{}", file.display());
-	}
-
-	let mut selectedConverterTmp: Option<Converter> = None;
+	let mut selected_converter_tmp: Option<Converter> = None;
 
 	for converter in converters {
-		if (converter.convert_from[&file_type].is_string()) {
-			selectedConverterTmp = Some(converter);
+		if converter.convert_from[&file_type].is_string() {
+			selected_converter_tmp = Some(converter);
 			break;
 		}
 	}
 
-	let selected_converter = selectedConverterTmp.unwrap();
+	let selected_converter = selected_converter_tmp.unwrap();
 
 	println!("Converter: {}", selected_converter.name);
 
@@ -104,13 +121,13 @@ fn main() {
 		.collect()	
 		;
 
-	let target_output = selections[select(&selections)];
+	let target_output = selections[select("Convert to:",&selections)];
 
 	for file in &files {
 		run_converter(&selected_converter, 
-			file.as_path().to_str().expect("AA"), 
-			 &(String::new() + file.file_stem().expect("A").clone().to_str().expect("") + "." + &target_output),
-			file_type,
+			file.as_path().to_str().unwrap(), 
+			&(String::new() + file.file_stem().unwrap().clone().to_str().expect("") + "." + &target_output),
+			&file_type,
 			&target_output)
 	}
 
