@@ -1,7 +1,9 @@
-use std::{fs, process::{Command, ExitStatus}};
+use std::{fs::{self, File}, process::{Command, ExitStatus, Stdio}, io::{self, Write, BufReader, BufRead}, thread::sleep, time, os::fd::{AsFd, AsRawFd, FromRawFd}};
 
+use console::style;
 use glob::glob;
 use serde::{Deserialize, Serialize};
+use shlex::Shlex;
 
 
 #[derive(Serialize, Deserialize)]
@@ -34,35 +36,53 @@ pub fn get_converters() -> Vec<Converter>
 	return converters;
 }
 
-pub fn run_converter(converter: &Converter, input: &str, output: &str, input_type: &str, output_type: &str) {
-	let parsed_command = converter.args
-		.replace("%INFORM%", input_type)
-		.replace("%OUTFORM%", output_type)
-		.replace("%OUTFILE%", output)
-		.replace("%INFILE%", input);
+pub fn run_converter(converter: &Converter, args: &str, input: &str, output: &str, input_type: &str, output_type: &str) {
+	let parsed_command = args
+		.replace("%INFORM%", &format!("'{}'", input_type))
+		.replace("%OUTFORM%", &format!("'{}'", output_type))
+		.replace("%OUTFILE%", &format!("'{}'", output))
+		.replace("%INFILE%", &format!("'{}'", input));
 
-	print!("[CONVERTING] {} -> {}\t", input, output);
+	let loading_chars = "-/\\";
+	let mut loading_char_idx = 0;
 
-	let result = Command::new(&converter.program_name)
-		.args(parsed_command.split(" "))
-		.output()
+
+	let mut result = Command::new(&converter.program_name)
+		.args(shlex::split(&parsed_command).unwrap())
+		.stdout(Stdio::piped())
+		.stderr(Stdio::piped())
+		.spawn()
 		.expect("Failed to run program.");
 
-	if (ExitStatus::success(&result.status) == false) {
-		println!("[ERROR]\n---");
+	while result.try_wait().is_ok_and(|x| x == None) {
+		print!("{}[{}] {} -> {}\t", ansi_escapes::EraseLines(1), loading_chars.chars().nth(loading_char_idx % loading_chars.len()).unwrap(), input, output);
+		io::stdout().flush().unwrap();
+		loading_char_idx += 1;
+		sleep(time::Duration::from_millis(100));
+	}
+
+
+	if (ExitStatus::success(&result.wait().unwrap()) == false) {
+		println!("[{}]\n---", style("ERROR").red().bold());
 
 		println!("> {} {}", converter.program_name, parsed_command);
-	
-		if result.stdout.len() != 0 {
-			println!("<\t{}", String::from_utf8(result.stdout).unwrap());
+
+		let stdout = result.stdout.take().unwrap();
+		let stderr = result.stderr.take().unwrap();
+
+		let lines_stdout = BufReader::new(stdout).lines();
+		for line in lines_stdout {
+			println!("<\t{}", line.unwrap());
 		}
-		if result.stderr.len() != 0 {
-			println!("<2\t{}", String::from_utf8(result.stderr).unwrap());
+
+		let lines_stderr = BufReader::new(stderr).lines();
+		for line in lines_stderr {
+			println!("<2\t{}", line.unwrap());
 		}
 
 		println!("---");
 	} else {
-		println!("[OK]");
+		println!("[{}]", style("OK").green().bold());
 	}
 	
 }

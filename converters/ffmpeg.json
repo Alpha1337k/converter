@@ -2,7 +2,7 @@
 	"name": "FFmpeg",
 	"href": "https://ffmpeg.org/",
 	"program_name": "ffmpeg",
-	"args": "-i %INFILE% %OUTFILE%",
+	"args": "-y -i %INFILE% %OUTFILE%",
 	"convert_from": {
 		"mp4": "mp4",
 		"avi": "avi",

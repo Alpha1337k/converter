@@ -1,6 +1,7 @@
-use std::{collections::HashSet, ffi::{OsString}, path::{PathBuf}, fmt::Display};
+use std::{collections::HashSet, ffi::{OsString}, path::{PathBuf}, fmt::Display, process::exit};
 
-use dialoguer::{theme::ColorfulTheme, FuzzySelect, Input, Confirm};
+use console::{Color, style, Style};
+use dialoguer::{theme::ColorfulTheme, FuzzySelect, Input, Confirm, Editor};
 use glob::{glob};
 
 pub mod converters;
@@ -27,7 +28,16 @@ fn basic_prompt(query: &str) -> String {
         .unwrap();
 }
 
-fn get_target_files(raw_glob: String) -> Vec<PathBuf> {
+fn confirm_prompt(query: &str) -> bool {
+	let confirmed = Confirm::with_theme(&ColorfulTheme::default())
+		.with_prompt(query)
+		.interact()
+		.unwrap();
+
+	return confirmed;
+}
+
+fn get_target_files(raw_glob: &str) -> Vec<PathBuf> {
 	let files: Vec<PathBuf> = glob(&raw_glob)
 		.expect("Error: invalid glob pattern.")
 		.filter_map(Result::ok)
@@ -50,7 +60,6 @@ fn get_extension(files: &Vec<PathBuf>) -> Option<String> {
 
 	if extensions.len() == 1 {
 		let rv = extensions.iter().next().unwrap().clone();
-		println!("RV: {}", rv);
 		return Some(rv);
 	}
 	return None;
@@ -67,18 +76,11 @@ fn get_filetype(files: &Vec<PathBuf>) -> String {
 				break 'autoext
 			};
 
-			if (file_types.len() >= 2) {
-				println!("Multiple extensions found. Requires manual input.");
-				break 'autoext
-			};
+			let confirmed = confirm_prompt(&format!("Detected filetype '{}'. Is this correct?", file_types[0]));
 
-				let confirmed = Confirm::new()
-					.with_prompt(format!("Detected filetype '{}'. Is this correct?", file_types[0]))
-					.interact()
-					.unwrap();
-				if (confirmed == true) {
-					return file_types[0].to_string();
-				}
+			if (confirmed == true) {
+				return file_types[0].to_string();
+			}
 		},
 		None => {
 			println!("Extension not specified.");
@@ -95,9 +97,14 @@ fn get_filetype(files: &Vec<PathBuf>) -> String {
 fn main() {
 	let converters = get_converters();
 	let target_glob = basic_prompt("[GLOB] Select target files: ");
-	let files = get_target_files(target_glob);
+	let files = get_target_files(&target_glob);
 
-	println!("{}",format!("Found {} files.", files.len()));
+	if (files.len() == 0) {
+		println!("Error: no files found matching {}.", &target_glob);
+		exit(1)
+	}
+
+	println!("{}{}{}", style("Found ").dim(), style(files.len()).bold(), style(" files.").dim());
 	let file_type = get_filetype(&files);
 
 	let mut selected_converter_tmp: Option<Converter> = None;
@@ -109,9 +116,10 @@ fn main() {
 		}
 	}
 
-	let selected_converter = selected_converter_tmp.unwrap();
-
-	println!("Converter: {}", selected_converter.name);
+	let selected_converter = selected_converter_tmp.unwrap_or_else(|| {
+		println!("Failed to find converter for this filetype.");
+		exit(1);
+	});
 
 	let selections: Vec<&String> = selected_converter
 		.convert_to.as_object()
@@ -123,8 +131,18 @@ fn main() {
 
 	let target_output = selections[select("Convert to:",&selections)];
 
+	let needs_cmd_edit = confirm_prompt("Do you want to add parameters?");
+
+	let mut prompt = selected_converter.args.clone();
+
+	if (needs_cmd_edit) {
+		prompt = Editor::new().edit(&prompt).unwrap().unwrap();
+	}
+
 	for file in &files {
-		run_converter(&selected_converter, 
+		run_converter(
+			&selected_converter,
+			&prompt,
 			file.as_path().to_str().unwrap(), 
 			&(String::new() + file.file_stem().unwrap().clone().to_str().expect("") + "." + &target_output),
 			&file_type,
