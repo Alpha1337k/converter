@@ -31,7 +31,7 @@ pub fn get_file_type(ext: &str) -> Vec<&str>
 		return v;
 	} else {
 
-		if (TYPES[ext].is_array()) {
+		if TYPES[ext].is_array() {
 			v = TYPES[ext]
 				.as_array()
 				.unwrap()
@@ -57,10 +57,10 @@ pub fn get_file_types_flat() -> Vec<String>
 		}
 	let mut types: Vec<String> = Vec::new();
 
-	for (key, value) in TYPES.as_object().unwrap() {
-		if (value.is_string()) {
+	for (_key, value) in TYPES.as_object().unwrap() {
+		if value.is_string() {
 			types.push(String::from(value.as_str().unwrap()));
-		} else if (value.is_array()) {
+		} else if value.is_array() {
 			for s in value.as_array().unwrap() {
 				types.push(String::from(s.as_str().unwrap()));
 			}

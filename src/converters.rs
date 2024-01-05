@@ -1,9 +1,9 @@
-use std::{fs::{self, File}, process::{Command, ExitStatus, Stdio}, io::{self, Write, BufReader, BufRead}, thread::sleep, time, os::fd::{AsFd, AsRawFd, FromRawFd}};
+use std::{fs::{self}, process::{Command, ExitStatus, Stdio}, io::{self, Write, BufReader, BufRead}, thread::sleep, time};
 
 use console::style;
 use glob::glob;
 use serde::{Deserialize, Serialize};
-use shlex::Shlex;
+
 
 
 #[derive(Serialize, Deserialize)]
@@ -43,9 +43,8 @@ pub fn run_converter(converter: &Converter, args: &str, input: &str, output: &st
 		.replace("%OUTFILE%", &format!("'{}'", output))
 		.replace("%INFILE%", &format!("'{}'", input));
 
-	let loading_chars = "-/\\";
+	let loading_chars = ["⠏","⠛","⠹","⠼","⠶","⠧"];
 	let mut loading_char_idx = 0;
-
 
 	let mut result = Command::new(&converter.program_name)
 		.args(shlex::split(&parsed_command).unwrap())
@@ -55,15 +54,19 @@ pub fn run_converter(converter: &Converter, args: &str, input: &str, output: &st
 		.expect("Failed to run program.");
 
 	while result.try_wait().is_ok_and(|x| x == None) {
-		print!("{}[{}] {} -> {}\t", ansi_escapes::EraseLines(1), loading_chars.chars().nth(loading_char_idx % loading_chars.len()).unwrap(), input, output);
+		print!("{}{} {} -> {}", ansi_escapes::EraseLines(1), 
+			loading_chars[loading_char_idx % loading_chars.len()],
+			input, 
+			output);
 		io::stdout().flush().unwrap();
 		loading_char_idx += 1;
 		sleep(time::Duration::from_millis(100));
 	}
 
 
-	if (ExitStatus::success(&result.wait().unwrap()) == false) {
-		println!("[{}]\n---", style("ERROR").red().bold());
+	if ExitStatus::success(&result.wait().unwrap()) == false {
+		println!("{}{} {} -> {}", ansi_escapes::EraseLines(1), style("🞫").red().bold() , input, output);
+		println!("{}", style("---").dim());
 
 		println!("> {} {}", converter.program_name, parsed_command);
 
@@ -80,9 +83,9 @@ pub fn run_converter(converter: &Converter, args: &str, input: &str, output: &st
 			println!("<2\t{}", line.unwrap());
 		}
 
-		println!("---");
+		println!("{}", style("---").dim());
 	} else {
-		println!("[{}]", style("OK").green().bold());
+		println!("{}{} {} -> {}\t", ansi_escapes::EraseLines(1), style("✔").green().bold() , input, output);
 	}
 	
 }

@@ -1,6 +1,6 @@
 use std::{collections::HashSet, ffi::{OsString}, path::{PathBuf}, fmt::Display, process::exit};
 
-use console::{Color, style, Style};
+use console::{style};
 use dialoguer::{theme::ColorfulTheme, FuzzySelect, Input, Confirm, Editor};
 use glob::{glob};
 
@@ -66,19 +66,19 @@ fn get_extension(files: &Vec<PathBuf>) -> Option<String> {
 }
 
 fn get_filetype(files: &Vec<PathBuf>) -> String {
-	let mut file_type = String::new();
+	let _file_type = String::new();
 
 	match get_extension(&files) {
 		Some(ext) => 'autoext: {
 			let file_types = get_file_type(&ext);
-			if (file_types.len() == 0) {
+			if file_types.len() == 0 {
 				println!("Could not automatically find extension.");
 				break 'autoext
 			};
 
 			let confirmed = confirm_prompt(&format!("Detected filetype '{}'. Is this correct?", file_types[0]));
 
-			if (confirmed == true) {
+			if confirmed == true {
 				return file_types[0].to_string();
 			}
 		},
@@ -99,7 +99,7 @@ fn main() {
 	let target_glob = basic_prompt("[GLOB] Select target files: ");
 	let files = get_target_files(&target_glob);
 
-	if (files.len() == 0) {
+	if files.len() == 0 {
 		println!("Error: no files found matching {}.", &target_glob);
 		exit(1)
 	}
@@ -135,7 +135,7 @@ fn main() {
 
 	let mut prompt = selected_converter.args.clone();
 
-	if (needs_cmd_edit) {
+	if needs_cmd_edit {
 		prompt = Editor::new().edit(&prompt).unwrap().unwrap();
 	}
 
