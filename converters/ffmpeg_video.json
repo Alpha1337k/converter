@@ -1,0 +1,42 @@
+{
+	"name": "FFmpeg",
+	"href": "https://ffmpeg.org/",
+	"program_name": "ffmpeg",
+	"args": "-y -i %INFILE% %OUTFILE%",
+	"convert_from": {
+		"MP4": "MP4",
+		"AVI": "AVI",
+		"MOV": "MOV",
+		"MKV": "MKV",
+		"WMV": "WMV",
+		"FLV": "FLV",
+		"MPEG": "MPEG",
+		"WebM": "WebM",
+		"3GP": "3GP",
+		"M4V": "M4V",
+		"SWF": "SWF",
+		"VOB": "VOB",
+		"R3D": "R3D",
+		"OGV": "OGV",
+		"DV": "DV",
+		"ASF": "ASF"
+	},
+	"convert_to": {
+		"MP4": "MP4",
+		"AVI": "AVI",
+		"MOV": "MOV",
+		"MKV": "MKV",
+		"WMV": "WMV",
+		"FLV": "FLV",
+		"MPEG": "MPEG",
+		"WebM": "WebM",
+		"3GP": "3GP",
+		"M4V": "M4V",
+		"SWF": "SWF",
+		"VOB": "VOB",
+		"R3D": "R3D",
+		"OGV": "OGV",
+		"DV": "DV",
+		"ASF": "ASF"
+	}
+}

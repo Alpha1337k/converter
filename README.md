@@ -1,11 +1,11 @@
 # converter-cli
-Generalized file conversion tool.
+Generalized file conversion CLI. Support video, text, audio and custom support.
 
-To run
+## To run
 ```bash
 # Build first
 docker build -t converter .
 
-# Run anywhere
+# Run!
 docker run --rm --volume "`pwd`:/usr/src/converter" --user `id -u`:`id -g` -it converter
 ```

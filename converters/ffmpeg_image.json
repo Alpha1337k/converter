@@ -1,0 +1,38 @@
+{
+	"name": "FFmpeg",
+	"href": "https://ffmpeg.org/",
+	"program_name": "ffmpeg",
+	"args": "-y -i %INFILE% %OUTFILE%",
+	"convert_from": {
+		"bmp": "bmp",
+		"png": "png",
+		"jpeg": "jpeg",
+		"gif": "gif",
+		"tiff": "tiff",
+		"webp": "webp",
+		"ppm": "ppm",
+		"pgm": "pgm",
+		"pam": "pam",
+		"pcx": "pcx",
+		"targa": "targa",
+		"pbm": "pbm",
+		"xbm": "xbm",
+		"xpm": "xpm"
+	},
+	"convert_to": {
+		"bmp": "bmp",
+		"png": "png",
+		"jpeg": "jpeg",
+		"gif": "gif",
+		"tiff": "tiff",
+		"webp": "webp",
+		"ppm": "ppm",
+		"pgm": "pgm",
+		"pam": "pam",
+		"pcx": "pcx",
+		"targa": "targa",
+		"pbm": "pbm",
+		"xbm": "xbm",
+		"xpm": "xpm"
+	}
+}
