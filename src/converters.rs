@@ -19,7 +19,9 @@ pub fn get_converters() -> Vec<Converter>
 {
 	let mut converters = Vec::with_capacity(0);
 
-	for item in glob("converters/*.json").expect("Error: No converter manifests found.") {
+	let converter_dir = format!("{}{}", option_env!("CONVERTER_PATH").unwrap_or("./converters/"), "./*.json");
+
+	for item in glob(&converter_dir).expect("Error: No converter manifests found.") {
 		match item {
 			Ok(v) => {
 				let file = fs::read_to_string(v.as_os_str()).expect("Error: Failed to open converter file.");

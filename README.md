@@ -1,5 +1,5 @@
 # converter-cli
-Generalized file conversion CLI. Support video, text, audio and custom support.
+Generalized file conversion CLI. Support video, image, text, audio and custom support.
 
 ## To run
 ```bash
@@ -7,5 +7,8 @@ Generalized file conversion CLI. Support video, text, audio and custom support.
 docker build -t converter .
 
 # Run!
-docker run --rm --volume "`pwd`:/usr/src/converter" --user `id -u`:`id -g` -it converter
+docker run --rm --volume "`pwd`:/data" --user `id -u`:`id -g` -it converter
+
+# Or add to your .*sh file.
+alias converter='docker run --rm --volume "`pwd`:/data" --user `id -u`:`id -g` -it converter'
 ```

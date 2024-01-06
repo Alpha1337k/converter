@@ -1,11 +1,13 @@
 
 use serde_json::{Value};
 
-use std::fs;
+use std::{fs, ffi::OsStr, env};
 
 fn load_file_types() -> Value
 {
-	let file = fs::read_to_string("filetypes.json").expect("Error: could not load filetypes.json");
+	let ft_path = option_env!("FILETYPES_PATH").unwrap_or("./filetypes.json");
+
+	let file = fs::read_to_string(ft_path).expect("Error: could not load filetypes.json");
 
 	let v: Value = serde_json::from_str(&file).expect("Failed to parse filetypes");
 
