@@ -1,7 +1,7 @@
 
 use serde_json::{Value};
 
-use std::{fs, ffi::OsStr, env};
+use std::fs;
 
 fn load_file_types() -> Value
 {
