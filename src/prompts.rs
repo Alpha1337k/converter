@@ -1,32 +1,31 @@
-use std::{fmt::Display};
+use std::fmt::Display;
 
-use dialoguer::{theme::ColorfulTheme, FuzzySelect, Input, Confirm};
+use dialoguer::{theme::ColorfulTheme, Confirm, FuzzySelect, Input};
 
-
-pub fn select<T: Display>(prompt: &str, options: &Vec<T>) -> usize {
+pub fn select<T: Display>(prompt: &str, options: &[T]) -> usize {
     let selection = FuzzySelect::with_theme(&ColorfulTheme::default())
         .with_prompt(prompt)
-		.max_length(5_usize)
+        .max_length(5_usize)
         .default(0)
-        .items(&options[..])
+        .items(options)
         .interact()
         .unwrap();
 
-	return selection;
+    selection
 }
 
 pub fn basic_prompt(query: &str) -> String {
-	return Input::with_theme(&ColorfulTheme::default())
+    return Input::with_theme(&ColorfulTheme::default())
         .with_prompt(query)
         .interact_text()
         .unwrap();
 }
 
 pub fn confirm_prompt(query: &str) -> bool {
-	let confirmed = Confirm::with_theme(&ColorfulTheme::default())
-		.with_prompt(query)
-		.interact()
-		.unwrap();
+    let confirmed = Confirm::with_theme(&ColorfulTheme::default())
+        .with_prompt(query)
+        .interact()
+        .unwrap();
 
-	return confirmed;
+    confirmed
 }
