@@ -1,19 +1,10 @@
+use converter::{converters::{find_converter, get_converters}, converting::run_converter, file_types::{FileTypeError, FileTypes}, prompts::select};
 use dialoguer::Editor;
 use std::{
     path::{Path, PathBuf},
     process::exit,
 };
 
-mod constants;
-mod converters;
-mod file_types;
-mod prompts;
-
-use crate::{
-    converters::{find_converter, get_converters, run_converter},
-    file_types::{FileTypeError, FileTypes},
-    prompts::select,
-};
 use clap::Parser;
 use thiserror::Error;
 
@@ -84,11 +75,17 @@ fn get_extension(target: &Path, file_types: &FileTypes) -> String {
         Some(ext) => match ext {
             Ok(e) => e,
             Err(e) => {
-                eprintln!("{}", e);
+                eprintln!("Error: {}", e);
                 exit(1)
             }
         },
         None => {
+            eprintln!(
+                "{}",
+                ArgError::UnrecognizedExtension {
+                    file: target.into()
+                }
+            );
             exit(1);
         }
     }
@@ -97,12 +94,10 @@ fn get_extension(target: &Path, file_types: &FileTypes) -> String {
 fn main() {
     let args = Args::parse();
 
-    dbg!(&args);
-
     let loaded_converters = match get_converters() {
         Ok(v) => v,
         Err(e) => {
-            eprintln!("{:?}", e);
+            eprintln!("Error: {}", e);
             exit(1)
         }
     };
@@ -110,12 +105,12 @@ fn main() {
     let file_types = match FileTypes::load() {
         Ok(f) => f,
         Err(e) => {
-            eprintln!("{}", e);
+            eprintln!("Error: {}", e);
             exit(1)
         }
     };
 
-    dbg!(&loaded_converters);
+    // dbg!(&loaded_converters);
 
     let input_extension = get_extension(&args.input_file, &file_types);
     let output_extension = get_extension(&args.output_file, &file_types);
@@ -141,12 +136,18 @@ fn main() {
         prompt = Editor::new().edit(&prompt).unwrap().unwrap();
     }
 
-    run_converter(
+    match run_converter(
         selected_converter,
         &prompt,
         args.input_file.to_str().unwrap(),
         args.output_file.to_str().unwrap(),
         &input_extension,
         &output_extension,
-    );
+    ) {
+        Ok(_) => exit(0),
+        Err(e) => {
+            eprintln!("Error: {}", e);
+            exit(1)
+        }
+    }
 }
