@@ -1,4 +1,9 @@
-use std::{io::{self, BufRead, BufReader, Write}, process::{Command, ExitStatus, Stdio}, thread::sleep, time};
+use std::{
+    io::{self, BufRead, BufReader, Write},
+    process::{Command, ExitStatus, Stdio},
+    thread::sleep,
+    time,
+};
 
 use crate::{constants::LOADING_ANIMATION, converters::Converter};
 use console::style;
@@ -40,7 +45,6 @@ fn dump_error_logs(
 
     println!("{}", style("---").dim());
 }
-
 
 pub fn run_converter(
     converter: &Converter,

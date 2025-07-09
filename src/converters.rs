@@ -1,20 +1,23 @@
 use std::{
-    collections::HashMap,
-    error::Error,
-    fs::{self},
-    io::{self, BufRead, BufReader, Write},
-    process::{Command, ExitStatus, Stdio},
-    thread::sleep,
-    time,
+    collections::HashMap, error::Error, fs::{self}, io::{self, BufRead, BufReader, Write}, path::{Path, PathBuf}, process::{Command, ExitStatus, Stdio}, thread::sleep, time
 };
 
 use console::style;
 use glob::glob;
 use serde::{Deserialize, Serialize};
+use which::which;
 
 use crate::{
     constants::{CONVERTER_CONFIG_DIR, LOADING_ANIMATION},
 };
+
+use thiserror::Error;
+
+#[derive(Error, Debug, Clone, PartialEq)]
+pub enum ConverterError {
+    #[error("'{program_name}' was not found in path.")]
+    ConverterNotFound { program_name: String },
+}
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct Converter {
@@ -23,6 +26,13 @@ pub struct Converter {
     pub args: String,
     pub convert_from: HashMap<String, String>,
     pub convert_to: HashMap<String, String>,
+}
+
+impl Converter {
+	pub fn validate_program_existence(&self) -> Result<PathBuf, ConverterError> {
+		which(&self.program_name)
+			.map_err(|_| ConverterError::ConverterNotFound { program_name: self.program_name.clone() })
+	}
 }
 
 pub fn get_converters() -> Result<Vec<Converter>, Box<dyn Error>> {
@@ -40,7 +50,13 @@ pub fn get_converters() -> Result<Vec<Converter>, Box<dyn Error>> {
             serde_json::from_str::<Converter>(&file)
                 .map_err(|e| io::Error::new(io::ErrorKind::Other, e))
         }) {
-            Ok(converter) => converters.push(converter),
+            Ok(converter) => {
+				if let Err(e) = converter.validate_program_existence() {
+					eprintln!("Failed to load {:?}: {}", entry, e);
+				} else {
+					converters.push(converter)
+				}
+			}
             Err(e) => eprintln!("Failed to load {:?}: {}", entry, e),
         }
     }
