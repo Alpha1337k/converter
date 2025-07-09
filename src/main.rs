@@ -1,4 +1,9 @@
-use converter::{converters::{find_converter, get_converters}, converting::run_converter, file_types::{FileTypeError, FileTypes}, prompts::select};
+use converter::{
+    converters::{find_converter, get_converters},
+    converting::run_converter,
+    file_types::{FileTypeError, FileTypes},
+    prompts::select,
+};
 use dialoguer::Editor;
 use std::{
     path::{Path, PathBuf},
