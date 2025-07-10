@@ -82,8 +82,8 @@
 		"chunkedhtml"
 	],
 	"txt": [
-		"typst",
 		"plain",
+		"typst",
 		"xwiki",
 		"zimwiki",
 		"mediawiki",
