@@ -49,7 +49,7 @@ pub fn get_converters() -> Result<Vec<Converter>, Box<dyn Error>> {
 
     let root = format!("{CONVERTER_CONFIG_DIR}/converters");
 
-    if fs::exists(&root)? == false {
+    if !fs::exists(&root)? {
         return Err(ConverterError::DirectoryNotFound { directory: root }.into());
     }
 
@@ -78,7 +78,7 @@ pub fn get_converters() -> Result<Vec<Converter>, Box<dyn Error>> {
         }
     }
 
-    if converters.len() == 0 {
+    if converters.is_empty() {
         Err(ConverterError::NoConvertersLoaded.into())
     } else {
         Ok(converters)
@@ -86,19 +86,14 @@ pub fn get_converters() -> Result<Vec<Converter>, Box<dyn Error>> {
 }
 
 pub fn find_converter<'a>(
-    converters: &'a Vec<Converter>,
+    converters: &'a [Converter],
     input_extension: &str,
     output_extension: &str,
 ) -> Option<&'a Converter> {
-    for converter in converters {
-        if converter
+    converters.iter().find(|&converter| {
+        converter
             .convert_from
             .get(input_extension)
             .is_some_and(|_| converter.convert_to.contains_key(output_extension))
-        {
-            return Some(converter);
-        }
-    }
-
-    None
+    })
 }
