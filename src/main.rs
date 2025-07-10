@@ -1,10 +1,12 @@
 use converter::{
+    constants::CONFIG_DIR,
     converters::{find_converter, get_converters},
     converting::run_converter,
     error_exit,
     extension::get_extension,
     file_types::FileTypes,
     prompts::confirm_prompt,
+    setup::setup_user_files,
 };
 use dialoguer::Editor;
 use env_logger::Builder;
@@ -20,14 +22,21 @@ pub enum RunError {
 }
 
 #[derive(Parser, Debug)]
-#[command(version, about, long_about = None)]
+#[command(version, about = "One stop shop for converting filetypes with ease.")]
 struct Args {
-    input_file: PathBuf,
-    output_file: PathBuf,
+    /// Input file to convert
+    #[arg(required_unless_present = "setup")]
+    input_file: Option<PathBuf>,
 
+    /// Output file to write
+    #[arg(required_unless_present = "setup")]
+    output_file: Option<PathBuf>,
+
+    /// Edit parameters before the conversion
     #[arg(short, long)]
     edit: bool,
 
+    /// Verbose debugging output
     #[arg(short)]
     verbose: bool,
 
@@ -36,6 +45,9 @@ struct Args {
 
     #[arg(short, long)]
     yes: bool,
+
+    #[arg(long)]
+    setup: bool,
     // #[arg(short, long)]
     // input_type: Option<String>,
 
@@ -54,6 +66,30 @@ fn main() {
         })
         .init();
 
+    if args.setup {
+        match setup_user_files() {
+            Ok(_) => {
+                println!("Configuration installed successfully.");
+                println!("You can add your own files at '~/{CONFIG_DIR}'.");
+                exit(0)
+            }
+            Err(e) => error_exit(e, Some("Failed to install files: ")),
+        }
+    }
+
+    if fs::exists(
+        dirs::home_dir()
+            .unwrap_or_else(|| error_exit("Failed to fetch Home directory", None))
+            .join(CONFIG_DIR),
+    )
+    .is_ok_and(|x| !x)
+    {
+        error_exit(
+            "Config directory does not exist. Run --setup to configure.",
+            None,
+        )
+    }
+
     let loaded_converters = match get_converters() {
         Ok(v) => v,
         Err(e) => error_exit(e, Some("Failed to load converters: ")),
@@ -64,10 +100,13 @@ fn main() {
         Err(e) => error_exit(e, Some("Failed to load filetypes table: ")),
     };
 
+    let input_file = args.input_file.unwrap();
+    let output_file = args.output_file.unwrap();
+
     // dbg!(&loaded_converters);
 
-    let input_extension = get_extension(args.use_default_formats, &args.input_file, &file_types);
-    let output_extension = get_extension(args.use_default_formats, &args.output_file, &file_types);
+    let input_extension = get_extension(args.use_default_formats, &input_file, &file_types);
+    let output_extension = get_extension(args.use_default_formats, &output_file, &file_types);
 
     let selected_converter =
         match find_converter(&loaded_converters, &input_extension, &output_extension) {
@@ -99,18 +138,18 @@ fn main() {
         }
     }
 
-    if !args.yes && fs::exists(&args.output_file).is_ok_and(|x| x) {
+    if !args.yes && fs::exists(&output_file).is_ok_and(|x| x) {
         confirm_prompt(&format!(
             "{:?} already exists. Do you want to overwrite this file?",
-            &args.output_file
+            &output_file
         ));
     }
 
     match run_converter(
         selected_converter,
         &prompt,
-        args.input_file.to_str().unwrap(),
-        args.output_file.to_str().unwrap(),
+        input_file.to_str().unwrap(),
+        output_file.to_str().unwrap(),
         &input_extension,
         &output_extension,
     ) {
