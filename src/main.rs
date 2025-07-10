@@ -2,10 +2,14 @@ use converter::{
     converters::{find_converter, get_converters},
     converting::run_converter,
     file_types::{FileTypeError, FileTypes},
-    prompts::select,
+    prompts::{confirm_prompt, select},
 };
 use dialoguer::Editor;
+use env_logger::Builder;
+use log::{debug, log_enabled, Log};
 use std::{
+    fmt::{Debug, Display},
+    fs,
     path::{Path, PathBuf},
     process::exit,
 };
@@ -39,9 +43,15 @@ struct Args {
 
     #[arg(short, long)]
     edit: bool,
-    // #[arg(short, long)]
-    // yes: bool,
 
+    #[arg(short)]
+    verbose: bool,
+
+    #[arg(short, long, default_value = "true")]
+    use_default_formats: bool,
+
+    #[arg(short, long)]
+    yes: bool,
     // #[arg(short, long)]
     // input_type: Option<String>,
 
@@ -49,7 +59,17 @@ struct Args {
     // output_type: Option<String>,
 }
 
+fn error_exit<T: Display>(e: T, extra_message: Option<&str>) -> ! {
+    eprintln!("Error: {}{}", extra_message.unwrap_or_default(), e);
+    if !log_enabled!(log::Level::Error) {
+        eprintln!("Hint: Try running the command again with -v for further debugging");
+    }
+    exit(1)
+}
+
 fn get_correct_extension(
+    use_default_format: bool,
+    target: &Path,
     file_types: &FileTypes,
     ext: String,
     prompt: String,
@@ -60,12 +80,17 @@ fn get_correct_extension(
         return Ok(types[0].clone());
     }
 
+    if use_default_format {
+        debug!("Using default format for {:?}", target);
+        return Ok(types[0].clone());
+    }
+
     let idx = select(&prompt, &types);
 
     Ok(types[idx].clone())
 }
 
-fn get_extension(target: &Path, file_types: &FileTypes) -> String {
+fn get_extension(use_default_format: bool, target: &Path, file_types: &FileTypes) -> String {
     let prompt = format!(
         "Multiple filetypes available. Please specify type for {:?}",
         &target.as_os_str()
@@ -75,14 +100,11 @@ fn get_extension(target: &Path, file_types: &FileTypes) -> String {
         .extension()
         .and_then(|v| v.to_str())
         .map(|v| v.to_lowercase())
-        .map(|v| get_correct_extension(file_types, v, prompt))
+        .map(|v| get_correct_extension(use_default_format, &target, file_types, v, prompt))
     {
         Some(ext) => match ext {
             Ok(e) => e,
-            Err(e) => {
-                eprintln!("Error: {}", e);
-                exit(1)
-            }
+            Err(e) => error_exit(e, None),
         },
         None => {
             eprintln!(
@@ -99,46 +121,64 @@ fn get_extension(target: &Path, file_types: &FileTypes) -> String {
 fn main() {
     let args = Args::parse();
 
+    Builder::new()
+        .filter_level(if args.verbose {
+            log::LevelFilter::Debug
+        } else {
+            log::LevelFilter::Off
+        })
+        .init();
+
     let loaded_converters = match get_converters() {
         Ok(v) => v,
-        Err(e) => {
-            eprintln!("Error: {}", e);
-            exit(1)
-        }
+        Err(e) => error_exit(e, Some("Failed to load converters: ")),
     };
 
     let file_types = match FileTypes::load() {
         Ok(f) => f,
-        Err(e) => {
-            eprintln!("Error: {}", e);
-            exit(1)
-        }
+        Err(e) => error_exit(e, Some("Failed to load filetypes table: ")),
     };
 
     // dbg!(&loaded_converters);
 
-    let input_extension = get_extension(&args.input_file, &file_types);
-    let output_extension = get_extension(&args.output_file, &file_types);
+    let input_extension = get_extension(args.use_default_formats, &args.input_file, &file_types);
+    let output_extension = get_extension(args.use_default_formats, &args.output_file, &file_types);
 
     let selected_converter =
         match find_converter(&loaded_converters, &input_extension, &output_extension) {
             Some(c) => c,
-            None => {
-                eprintln!(
-                    "Error: {}",
-                    RunError::NoConversionPossible {
-                        in_ext: input_extension.to_string(),
-                        out_ext: output_extension.to_string()
-                    }
-                );
-                exit(1)
-            }
+            None => error_exit(
+                RunError::NoConversionPossible {
+                    in_ext: input_extension.to_string(),
+                    out_ext: output_extension.to_string(),
+                },
+                None,
+            ),
         };
 
     let mut prompt = selected_converter.args.clone();
 
     if args.edit {
-        prompt = Editor::new().edit(&prompt).unwrap().unwrap();
+        prompt = match Editor::new().edit(&prompt) {
+            Ok(v) => {
+                let mut value = v.unwrap_or_default();
+
+                if value == "" {
+                    eprintln!("Using default prompt");
+                    value = prompt.clone()
+                }
+
+                value
+            }
+            Err(e) => error_exit(e, None),
+        }
+    }
+
+    if !args.yes && fs::exists(&args.output_file).is_ok_and(|x| x == true) {
+        confirm_prompt(&format!(
+            "{:?} already exists. Do you want to overwrite this file?",
+            &args.output_file
+        ));
     }
 
     match run_converter(
@@ -150,9 +190,6 @@ fn main() {
         &output_extension,
     ) {
         Ok(_) => exit(0),
-        Err(e) => {
-            eprintln!("Error: {}", e);
-            exit(1)
-        }
+        Err(e) => error_exit(e, None),
     }
 }

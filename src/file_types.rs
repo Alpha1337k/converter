@@ -1,3 +1,4 @@
+use log::debug;
 use serde_json::{Map, Value};
 use thiserror::Error;
 
@@ -10,7 +11,7 @@ use std::{
 
 #[derive(Error, Debug, Clone, PartialEq)]
 pub enum FileTypeError {
-    #[error("Invalid values for {key} found. Please check the filetypes file.")]
+    #[error("Invalid value(s) for {key} found. Please check the filetypes file.")]
     InvalidValueFound { key: String },
 }
 
@@ -21,6 +22,8 @@ pub struct FileTypes {
 impl FileTypes {
     pub fn load() -> Result<FileTypes, Box<dyn Error>> {
         let path = format!("{CONVERTER_CONFIG_DIR}/filetypes.json");
+
+        debug!("Loading filetypes from '{}'", &path);
 
         let map = fs::read_to_string(path).and_then(|f| {
             serde_json::from_str::<Map<String, Value>>(&f)
