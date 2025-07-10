@@ -9,6 +9,7 @@ pub mod converting;
 pub mod extension;
 pub mod file_types;
 pub mod prompts;
+pub mod setup;
 
 #[derive(Error, Debug, Clone, PartialEq)]
 pub enum ArgError {

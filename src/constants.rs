@@ -1,2 +1,3 @@
-pub const CONVERTER_CONFIG_DIR: &str = "/mnt/wsl/PHYSICALDRIVE0p1/projects/converter";
+pub const CONFIG_DIR: &str = ".converter";
+pub const CONVERTERS_DIR: &str = "converters";
 pub const LOADING_ANIMATION: [&str; 6] = ["⠏", "⠛", "⠹", "⠼", "⠶", "⠧"];

@@ -2,12 +2,13 @@ use log::debug;
 use serde_json::{Map, Value};
 use thiserror::Error;
 
-use crate::constants::CONVERTER_CONFIG_DIR;
 use std::{
     error::Error,
     fs::{self},
     io,
 };
+
+use crate::constants::CONFIG_DIR;
 
 #[derive(Error, Debug, Clone, PartialEq)]
 pub enum FileTypeError {
@@ -21,9 +22,12 @@ pub struct FileTypes {
 
 impl FileTypes {
     pub fn load() -> Result<FileTypes, Box<dyn Error>> {
-        let path = format!("{CONVERTER_CONFIG_DIR}/filetypes.json");
+        let path = dirs::home_dir()
+            .ok_or("Failed to load home directory")?
+            .join(CONFIG_DIR)
+            .join("filetypes.json");
 
-        debug!("Loading filetypes from '{}'", &path);
+        debug!("Loading filetypes from '{:?}'", &path);
 
         let map = fs::read_to_string(path).and_then(|f| {
             serde_json::from_str::<Map<String, Value>>(&f)

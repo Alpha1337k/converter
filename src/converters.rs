@@ -11,9 +11,9 @@ use log::{debug, warn};
 use serde::{Deserialize, Serialize};
 use which::which;
 
-use crate::constants::CONVERTER_CONFIG_DIR;
-
 use thiserror::Error;
+
+use crate::constants::{CONFIG_DIR, CONVERTERS_DIR};
 
 #[derive(Error, Debug, Clone, PartialEq)]
 pub enum ConverterError {
@@ -21,7 +21,7 @@ pub enum ConverterError {
     ConverterNotFound { program_name: String },
 
     #[error("Directory '{directory}' does not exist")]
-    DirectoryNotFound { directory: String },
+    DirectoryNotFound { directory: PathBuf },
 
     #[error("No conversion manifests were found or valid.")]
     NoConvertersLoaded,
@@ -47,17 +47,21 @@ impl Converter {
 pub fn get_converters() -> Result<Vec<Converter>, Box<dyn Error>> {
     let mut converters = Vec::new();
 
-    let root = format!("{CONVERTER_CONFIG_DIR}/converters");
+    let mut root = dirs::home_dir()
+        .ok_or("Failed to load home directory")?
+        .join(CONFIG_DIR)
+        .join(CONVERTERS_DIR);
 
     if !fs::exists(&root)? {
         return Err(ConverterError::DirectoryNotFound { directory: root }.into());
     }
 
-    let converter_dir = format!("{CONVERTER_CONFIG_DIR}/converters/*.json");
+    root = root.join("*.json");
+    let converter_dir = root.to_str().ok_or("Failed to convert PathBuf to String")?;
 
     debug!("Loading all manifests using pattern '{}'", &converter_dir);
 
-    let iter = match glob(&converter_dir) {
+    let iter = match glob(converter_dir) {
         Ok(i) => i,
         Err(e) => return Err(e.into()),
     };
