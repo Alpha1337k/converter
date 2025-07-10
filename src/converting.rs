@@ -1,8 +1,10 @@
 use std::{
+    error::Error,
+    fs,
     io::{self, BufRead, BufReader, Write},
     process::{Command, ExitStatus, Stdio},
     thread::sleep,
-    time,
+    time::{self, Duration, SystemTime},
 };
 
 use crate::{constants::LOADING_ANIMATION, converters::Converter};
@@ -15,6 +17,15 @@ pub enum ConvertRunError {
     CommandFailure {
         program: String,
         e: Box<dyn std::error::Error>,
+    },
+
+    #[error("{program} was not created.")]
+    FileNotCreated { program: String },
+
+    #[error("{program} was not overwritten. (last overwrite: {:?})", modified_time)]
+    FileNotOverwritten {
+        program: String,
+        modified_time: SystemTime,
     },
 }
 
@@ -46,6 +57,31 @@ fn dump_error_logs(
     println!("{}", style("---").dim());
 }
 
+pub fn validate_conversion(output: &str) -> Result<(), Box<dyn Error>> {
+    let now = SystemTime::now();
+
+    match fs::exists(output)? {
+        true => {
+            let metadata = fs::metadata(output)?;
+            let modified_time = metadata.modified()?;
+
+            if modified_time < now - Duration::from_secs(1) {
+                Err(ConvertRunError::FileNotOverwritten {
+                    program: output.into(),
+                    modified_time,
+                }
+                .into())
+            } else {
+                Ok(())
+            }
+        }
+        false => Err(ConvertRunError::FileNotCreated {
+            program: output.into(),
+        }
+        .into()),
+    }
+}
+
 pub fn run_converter(
     converter: &Converter,
     args: &str,
@@ -64,6 +100,7 @@ pub fn run_converter(
         .args(shlex::split(&parsed_command).unwrap())
         .stdout(Stdio::piped())
         .stderr(Stdio::piped())
+        .stdin(Stdio::null())
         .spawn()
     {
         Ok(c) => c,
@@ -94,6 +131,16 @@ pub fn run_converter(
     println!("{}", ansi_escapes::EraseLines(1));
 
     if ExitStatus::success(&result.wait().unwrap()) {
+        match validate_conversion(output) {
+            Ok(_) => {}
+            Err(e) => {
+                println!("{} {} -> {}", style("🞫").red().bold(), input, output);
+
+                eprintln!("Error: {}", e);
+                return Err("Failed to convert file.".into());
+            }
+        }
+
         println!("{} {} -> {}\t", style("✔").green().bold(), input, output);
         Ok(())
     } else {
